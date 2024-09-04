@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 DarkKronicle
+ * Copyright (C) 2024 DarkKronicle
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,8 +17,14 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.registry.BuiltinRegistries;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.registry.RegistryWrapper;
+
+import static java.awt.SystemColor.text;
+
 
 @Environment(EnvType.CLIENT)
 public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
@@ -38,7 +44,6 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
     }
 
     private Text transfer(Text text) {
-        // Using the built in serializer LiteralText is required
         Text base = Text.empty();
         for (Text t : text.getSiblings()) {
             Text newT = Text.literal(t.getString()).fillStyle(cleanStyle(t.getStyle()));
@@ -53,8 +58,11 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
         LocalDate date = dateTime.toLocalDate();
         LocalTime time = dateTime.toLocalTime();
 
-        Text display = Text.Serialization.fromJson(obj.get("display").getAsString());
-        Text original = Text.Serialization.fromJson(obj.get("original").getAsString());
+
+        // Deserialize the Text objects
+        Text display = Text.Serialization.fromJson(String.valueOf(obj.get("display")), DynamicRegistryManager.EMPTY);
+        Text original = Text.Serialization.fromJson(String.valueOf(obj.get("original")), DynamicRegistryManager.EMPTY);
+
         int stacks = obj.get("stacks").getAsByte();
         ChatMessage message =
                 ChatMessage.builder()
@@ -62,8 +70,7 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
                         .displayText(display)
                         .originalText(original)
                         .build();
-        LogChatMessage log = new LogChatMessage(message, date);
-        return log;
+        return new LogChatMessage(message, date);
     }
 
     @Override
@@ -71,10 +78,16 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
         JsonObject json = new JsonObject();
         ChatMessage chat = message.getMessage();
         LocalDateTime dateTime = LocalDateTime.of(message.getDate(), chat.getTime());
+
         json.addProperty("time", formatter.format(dateTime));
         json.addProperty("stacks", chat.getStacks());
-        json.add("display", Text.Serialization.toJsonTree(transfer(chat.getDisplayText())));
-        json.add("original", Text.Serialization.toJsonTree(transfer(chat.getOriginalText())));
+
+        // Convert Text to JSON and add to the JSON object
+        Text display = null;
+        json.add("display", new Text.Serializer(BuiltinRegistries.createWrapperLookup()).serialize(display, null, null));
+        Text original = null;
+        json.add("original", new Text.Serializer(BuiltinRegistries.createWrapperLookup()).serialize(original, null, null));
+
         return json;
     }
 }
