@@ -23,6 +23,7 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.registry.RegistryWrapper;
 
+import static fi.dy.masa.malilib.util.JsonUtils.GSON;
 import static java.awt.SystemColor.text;
 
 
@@ -60,8 +61,8 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
 
 
         // Deserialize the Text objects
-        Text display = Text.Serialization.fromJson(String.valueOf(obj.get("display")), DynamicRegistryManager.EMPTY);
-        Text original = Text.Serialization.fromJson(String.valueOf(obj.get("original")), DynamicRegistryManager.EMPTY);
+        Text display = GSON.fromJson(obj.get("display"), Text.class);
+        Text original = GSON.fromJson(obj.get("original"), Text.class);
 
         int stacks = obj.get("stacks").getAsByte();
         ChatMessage message =
@@ -84,9 +85,9 @@ public class LogChatMessageSerializer implements IJsonSave<LogChatMessage> {
 
         // Convert Text to JSON and add to the JSON object
         Text display = null;
-        json.add("display", new Text.Serializer(BuiltinRegistries.createWrapperLookup()).serialize(display, null, null));
+        json.add("display", GSON.toJsonTree(transfer(chat.getDisplayText())));
         Text original = null;
-        json.add("original", new Text.Serializer(BuiltinRegistries.createWrapperLookup()).serialize(original, null, null));
+        json.add("original", GSON.toJsonTree(transfer(chat.getOriginalText())));
 
         return json;
     }
